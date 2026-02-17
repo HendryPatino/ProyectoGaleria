@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkyBox - Galería Multimedia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            light: '#e0f2fe', // Celeste muy claro
+                            DEFAULT: '#0ea5e9', // Azul Celeste vibrante
+                            dark: '#0284c7', // Azul un poco más oscuro
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Estilos personalizados para la barra de desplazamiento */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #0ea5e9; border-radius: 4px; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-700 font-sans min-h-screen flex flex-col">
+
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-cloud text-brand text-2xl"></i>
+                <h1 class="text-2xl font-bold text-gray-800">Sky<span class="text-brand">Box</span></h1>
+            </div>
+            
+            <div class="hidden md:flex bg-slate-100 rounded-full px-4 py-2 w-1/3 border border-slate-200 focus-within:border-brand focus-within:ring-1 focus-within:ring-brand transition-all">
+                <input type="text" id="searchInput" placeholder="Buscar por descripción..." class="bg-transparent border-none outline-none w-full text-sm">
+                <i class="fa-solid fa-search text-gray-400"></i>
+            </div>
+
+            <div class="flex gap-4">
+                <button onclick="setView('home')" class="hover:text-brand transition"><i class="fa-solid fa-home"></i> Inicio</button>
+                <button onclick="setView('favorites')" class="hover:text-brand transition"><i class="fa-solid fa-heart"></i> Favoritos</button>
+                <button onclick="openConfig()" class="hover:text-brand transition"><i class="fa-solid fa-cog"></i></button>
+            </div>
+        </div>
+        <div class="md:hidden px-4 pb-3">
+            <input type="text" id="searchInputMobile" placeholder="Buscar..." class="w-full bg-slate-100 rounded-full px-4 py-2 text-sm border border-slate-200">
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8 flex-grow">
+        
+        <section id="uploadSection" class="bg-white p-6 rounded-xl shadow-sm border border-brand-light mb-8">
+            <h2 class="text-lg font-semibold mb-4 text-brand-dark"><i class="fa-solid fa-plus-circle"></i> Nuevo Contenido</h2>
+            <div class="flex flex-col md:flex-row gap-4 items-end">
+                <div class="w-full md:w-1/2">
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Seleccionar Archivo (Img/Video)</label>
+                    <input type="file" id="fileInput" accept="image/*,video/*" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-light file:text-brand hover:file:bg-brand hover:file:text-white transition cursor-pointer">
+                </div>
+                <div class="w-full md:w-1/2">
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Descripción / Etiquetas</label>
+                    <input type="text" id="descInput" placeholder="Ej: Vacaciones en la playa 2024" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-brand">
+                </div>
+                <button onclick="uploadMedia()" class="w-full md:w-auto bg-brand hover:bg-brand-dark text-white font-bold py-2 px-6 rounded-lg transition shadow-md">
+                    Guardar
+                </button>
+            </div>
+            <p id="statusMsg" class="text-xs mt-2 h-4 text-brand font-semibold"></p>
+        </section>
+
+        <div class="flex justify-between items-center mb-6">
+            <h2 id="viewTitle" class="text-2xl font-bold text-gray-800">Galería</h2>
+            <span id="itemCount" class="text-sm text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm">0 elementos</span>
+        </div>
+
+        <div id="galleryGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            </div>
+
+        <div id="emptyState" class="hidden flex-col items-center justify-center py-20 text-gray-400">
+            <i class="fa-regular fa-folder-open text-6xl mb-4 text-brand-light"></i>
+            <p class="text-lg">No hay nada por aquí.</p>
+        </div>
+    </main>
+
+    <div id="configModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-8 max-w-sm w-full shadow-2xl">
+            <h3 class="text-xl font-bold mb-4 text-gray-800">Configuración</h3>
+            <div class="space-y-4">
+                <div class="p-4 bg-red-50 rounded-lg border border-red-100">
+                    <h4 class="font-bold text-red-600 text-sm mb-1">Zona de Peligro</h4>
+                    <p class="text-xs text-red-500 mb-3">Esto borrará todas las imágenes y videos guardados localmente.</p>
+                    <button onclick="clearAllData()" class="w-full bg-red-500 hover:bg-red-600 text-white text-sm py-2 rounded transition">Borrar todo</button>
+                </div>
+            </div>
+            <button onclick="closeConfig()" class="mt-6 w-full text-gray-500 hover:text-gray-800 text-sm">Cerrar</button>
+        </div>
+    </div>
+
+    <footer class="bg-white border-t py-6 text-center text-gray-400 text-sm">
+        <p>&copy; 2024 SkyBox Gallery. Almacenamiento Local.</p>
+    </footer>
+
+    <script>
+        // --- ESTADO Y VARIABLES ---
+        let mediaList = JSON.parse(localStorage.getItem('skybox_media')) || [];
+        let currentView = 'home'; // 'home' o 'favorites'
+
+        // --- INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderGallery();
+            
+            // Event Listeners para búsqueda
+            document.getElementById('searchInput').addEventListener('input', (e) => filterGallery(e.target.value));
+            document.getElementById('searchInputMobile').addEventListener('input', (e) => filterGallery(e.target.value));
+        });
+
+        // --- FUNCIONES CORE ---
+
+        // 1. Subir y Guardar
+        function uploadMedia() {
+            const fileInput = document.getElementById('fileInput');
+            const descInput = document.getElementById('descInput');
+            const statusMsg = document.getElementById('statusMsg');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                statusMsg.textContent = "⚠ Por favor selecciona un archivo.";
+                return;
+            }
+
+            // Límite simple de tamaño (para evitar colapsar localStorage) - 3MB
+            if (file.size > 3 * 1024 * 1024) {
+                statusMsg.textContent = "⚠ El archivo es muy grande (Máx 3MB para demo local).";
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const newMedia = {
+                    id: Date.now(),
+                    type: file.type.startsWith('video/') ? 'video' : 'image',
+                    data: e.target.result, // Base64
+                    desc: descInput.value || "Sin descripción",
+                    date: new Date().toLocaleDateString(),
+                    favorite: false
+                };
+
+                mediaList.unshift(newMedia); // Agregar al principio
+                saveData();
+                renderGallery();
+                
+                // Limpiar inputs
+                fileInput.value = '';
+                descInput.value = '';
+                statusMsg.textContent = "✔ Guardado exitosamente.";
+                setTimeout(() => statusMsg.textContent = "", 3000);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 2. Renderizar (Mostrar) Galería
+        function renderGallery(itemsToRender = null) {
+            const grid = document.getElementById('galleryGrid');
+            const emptyState = document.getElementById('emptyState');
+            const itemCount = document.getElementById('itemCount');
+            
+            // Si no pasamos items específicos, usamos la lista completa o favoritos según la vista
+            let items = itemsToRender;
+            if (!items) {
+                items = currentView === 'favorites' 
+                    ? mediaList.filter(m => m.favorite) 
+                    : mediaList;
+            }
+
+            // Actualizar título y contador
+            document.getElementById('viewTitle').textContent = currentView === 'favorites' ? 'Mis Favoritos' : 'Galería';
+            itemCount.textContent = `${items.length} elemento(s)`;
+
+            grid.innerHTML = '';
+
+            if (items.length === 0) {
+                grid.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+                return;
+            } else {
+                grid.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+            }
+
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden border border-gray-100 fade-in group";
+                
+                let mediaHtml = '';
+                if (item.type === 'video') {
+                    mediaHtml = `<video src="${item.data}" controls class="w-full h-48 object-cover bg-black"></video>`;
+                } else {
+                    mediaHtml = `<img src="${item.data}" alt="${item.desc}" class="w-full h-48 object-cover cursor-pointer" onclick="openModal('${item.data}')">`;
+                }
+
+                card.innerHTML = `
+                    <div class="relative">
+                        ${mediaHtml}
+                        <button onclick="deleteMedia(${item.id})" class="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-sm" title="Eliminar">
+                            <i class="fa-solid fa-trash-alt text-xs"></i>
+                        </button>
+                    </div>
+                    <div class="p-4">
+                        <div class="flex justify-between items-start">
+                            <p class="text-sm text-gray-700 font-medium truncate flex-1 pr-2" title="${item.desc}">${item.desc}</p>
+                            <button onclick="toggleFavorite(${item.id})" class="${item.favorite ? 'text-red-500' : 'text-gray-300 hover:text-red-400'} transition text-lg">
+                                <i class="${item.favorite ? 'fa-solid' : 'fa-regular'} fa-heart"></i>
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2">${item.date}</p>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // 3. Funcionalidades de Items
+        function toggleFavorite(id) {
+            const index = mediaList.findIndex(m => m.id === id);
+            if (index !== -1) {
+                mediaList[index].favorite = !mediaList[index].favorite;
+                saveData();
+                renderGallery(); // Re-renderizar para actualizar iconos
+            }
+        }
+
+        function deleteMedia(id) {
+            if(confirm('¿Estás seguro de querer eliminar este archivo?')) {
+                mediaList = mediaList.filter(m => m.id !== id);
+                saveData();
+                renderGallery();
+            }
+        }
+
+        // 4. Búsqueda
+        function filterGallery(query) {
+            const lowerQuery = query.toLowerCase();
+            const filtered = mediaList.filter(item => 
+                item.desc.toLowerCase().includes(lowerQuery)
+            );
+            // Si estamos en favoritos, filtrar sobre favoritos
+            if (currentView === 'favorites') {
+                const favFiltered = filtered.filter(m => m.favorite);
+                renderGallery(favFiltered);
+            } else {
+                renderGallery(filtered);
+            }
+        }
+
+        // 5. Utilidades y Configuración
+        function saveData() {
+            localStorage.setItem('skybox_media', JSON.stringify(mediaList));
+        }
+
+        function setView(view) {
+            currentView = view;
+            // Resetear inputs de búsqueda al cambiar vista
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchInputMobile').value = '';
+            renderGallery();
+        }
+
+        function openConfig() {
+            document.getElementById('configModal').classList.remove('hidden');
+            document.getElementById('configModal').classList.add('flex');
+        }
+
+        function closeConfig() {
+            document.getElementById('configModal').classList.add('hidden');
+            document.getElementById('configModal').classList.remove('flex');
+        }
+
+        function clearAllData() {
+            if(confirm('¿ACCIÓN IRREVERSIBLE: Se borrarán todas las fotos y videos. Continuar?')) {
+                localStorage.removeItem('skybox_media');
+                mediaList = [];
+                renderGallery();
+                closeConfig();
+            }
+        }
+    </script>
+</body>
+</html>
